@@ -1,0 +1,1034 @@
+# Fleet Management System API Documentation
+
+## Authentication & Vendor Management
+### Vendor Registration & Authentication
+POST /api/vendors/register
+- Register a new vendor
+- Body: { name, email, password, vendorType, contactNumber, address }
+- Response: { success, data: { vendor, token } }
+
+POST /api/vendors/login
+- Login for vendors
+- Body: { email, password }
+- Response: { success, data: { vendor, token } }
+
+### Vendor Profile Management
+GET /api/vendors/profile
+- Get vendor profile
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: vendor }
+
+PUT /api/vendors/profile
+- Update vendor profile
+- Headers: Authorization: Bearer <token>
+- Body: { name, contactNumber, address }
+- Response: { success, data: vendor }
+
+GET /api/vendors/dashboard
+- Get vendor dashboard data
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { stats, recentActivities } }
+
+## Vehicle Management
+### Vehicle Operations
+POST /api/vehicles
+- Add new vehicle
+- Headers: Authorization: Bearer <token>
+- Body: { vehicleNumber, type, model, status, documents }
+- Response: { success, data: vehicle }
+
+GET /api/vehicles
+- Get all vehicles (with optional vendorId filter)
+- Headers: Authorization: Bearer <token>
+- Query: ?vendorId=<vendorId>
+- Response: { success, data: [vehicles] }
+
+GET /api/vehicles/:id
+- Get vehicle by ID
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: vehicle }
+
+PUT /api/vehicles/:id
+- Update vehicle
+- Headers: Authorization: Bearer <token>
+- Body: { vehicleNumber, type, model, status, documents }
+- Response: { success, data: vehicle }
+
+DELETE /api/vehicles/:id
+- Delete vehicle
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { message } }
+
+### Vehicle-Driver Assignment
+POST /api/vehicles/:id/assign-driver
+- Assign driver to vehicle
+- Headers: Authorization: Bearer <token>
+- Body: { driverId }
+- Response: { success, data: { vehicle, driver } }
+
+POST /api/vehicles/:id/unassign-driver
+- Unassign driver from vehicle
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { message, vehicleId, unassignedDriverId } }
+
+### Vehicle Document Management
+POST /api/vehicles/:id/verify-documents
+- Verify vehicle documents
+- Headers: Authorization: Bearer <token>
+- Body: { documentType, status, remarks }
+- Response: { success, data: { document } }
+
+GET /api/vehicles/:id/document-status
+- Check vehicle document status
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { isExpired, expiringSoon, expiredDocuments, expiringSoonDocuments } }
+
+## Driver Management
+### Driver Operations
+POST /api/drivers
+- Add new driver
+- Headers: Authorization: Bearer <token>
+- Body: { name, phone, licenseNumber, licenseExpiry, documents }
+- Response: { success, data: driver }
+
+GET /api/drivers
+- Get all drivers (with optional vendorId filter)
+- Headers: Authorization: Bearer <token>
+- Query: ?vendorId=<vendorId>
+- Response: { success, data: [drivers] }
+
+GET /api/drivers/:id
+- Get driver by ID
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: driver }
+
+PUT /api/drivers/:id
+- Update driver
+- Headers: Authorization: Bearer <token>
+- Body: { name, phone, licenseNumber, licenseExpiry, documents }
+- Response: { success, data: driver }
+
+DELETE /api/drivers/:id
+- Delete driver
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { message } }
+
+### Driver-Vehicle Assignment
+POST /api/drivers/:id/assign-vehicle
+- Assign vehicle to driver
+- Headers: Authorization: Bearer <token>
+- Body: { vehicleId }
+
+POST /api/drivers/:id/verify-documents
+- Verify driver documents
+- Headers: Authorization: Bearer <token>
+- Body: { documentType, status, remarks }
+- Response: { success, data: { document } }
+
+GET /api/drivers/:id/documents/status
+- Check driver document status
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { isExpired, expiringSoon, expiredDocuments, expiringSoonDocuments } }
+
+## Document Management
+### Document Operations
+POST /api/documents
+- Upload a document
+- Headers: Authorization: Bearer <token>
+- Body: { entityType, entityId, documentType, file }
+- Response: { success, data: { documentId } }
+
+GET /api/documents/:id
+- Get document by ID
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { document } }
+
+DELETE /api/documents/:id
+- Delete document
+- Headers: Authorization: Bearer <token>
+- Response: { success, data: { message } }
+
+## Service Usage Guide
+
+### 1. Authentication Service
+The authentication service handles vendor registration, login, and token management.
+
+```javascript
+// Example: Register a new vendor
+const authService = require('./services/authService');
+
+const vendor = await authService.registerVendor({
+  name: 'City Fleet Manager',
+  email: 'city@example.com',
+  password: 'securePassword',
+  vendorType: 'CITY',
+  permissions: ['FLEET_MANAGEMENT', 'DRIVER_MANAGEMENT']
+});
+
+// Example: Login
+const { token, vendor } = await authService.loginVendor({
+  email: 'city@example.com',
+  password: 'securePassword'
+});
+```
+
+### 2. Cache Service
+The cache service manages Redis caching for improved performance.
+
+```javascript
+// Example: Cache operations
+const cacheService = require('./services/cacheService');
+
+// Cache vehicle list
+await cacheService.set('vehicles:city:123', vehicles, 3600);
+
+// Get cached vehicles
+const vehicles = await cacheService.get('vehicles:city:123');
+
+// Clear vendor cache
+await cacheService.clearByPattern('vendor:*');
+```
+
+### 3. Notification Service
+The notification service handles email notifications for document expiry and other alerts.
+
+```javascript
+// Example: Send notifications
+const notificationService = require('./services/notificationService');
+
+// Send document expiry notification
+await notificationService.sendDocumentExpiryNotification({
+  vendorId: 'vendor_123',
+  documentType: 'drivingLicense',
+  expiryDate: '2024-12-31'
+});
+
+// Check and notify expiring documents
+await notificationService.checkAndNotifyExpiringDocuments(30);
+```
+
+### 4. Scheduler Service
+The scheduler service manages automated tasks and periodic jobs.
+
+```javascript
+// Example: Schedule jobs
+const schedulerService = require('./services/schedulerService');
+
+// Start all scheduled jobs
+await schedulerService.startAllJobs();
+
+// Schedule document check
+await schedulerService.scheduleJob('documentCheck', '0 0 * * *', async () => {
+  await notificationService.checkAndNotifyExpiringDocuments(30);
+});
+```
+
+### 5. Document Service
+The document service handles document upload, verification, and management.
+
+```javascript
+// Example: Document operations
+const documentService = require('./services/documentService');
+
+// Upload driver document
+await documentService.uploadDocument({
+  entityType: 'DRIVER',
+  entityId: 'driver_123',
+  documentType: 'drivingLicense',
+  file: fileBuffer
+});
+
+// Verify document
+await documentService.verifyDocument({
+  documentId: 'doc_123',
+  status: 'VERIFIED',
+  remarks: 'Document verified'
+});
+```
+
+## API Endpoints
+
+### Authentication & Vendor Management
+[Previous authentication endpoints documentation remains unchanged]
+
+### Vehicle Management
+[Previous vehicle endpoints documentation remains unchanged]
+
+### Driver Management
+[Previous driver endpoints documentation remains unchanged]
+
+### Document Management
+[Previous document endpoints documentation remains unchanged]
+
+## Error Handling
+
+All services follow a consistent error handling pattern:
+
+```javascript
+try {
+  // Service operation
+} catch (error) {
+  if (error instanceof ValidationError) {
+    // Handle validation error
+  } else if (error instanceof NotFoundError) {
+    // Handle not found error
+  } else {
+    // Handle unexpected error
+    }
+}
+    ```
+
+## Service Integration Examples
+
+### 1. Vehicle Assignment Flow
+```javascript
+// Example: Assign driver to vehicle
+const vehicleService = require('./services/vehicleService');
+const driverService = require('./services/driverService');
+const notificationService = require('./services/notificationService');
+
+async function assignDriverToVehicle(vehicleId, driverId) {
+  // Assign driver
+  const assignment = await vehicleService.assignDriver(vehicleId, driverId);
+  
+  // Clear relevant caches
+  await cacheService.clearByPattern(`vehicle:${vehicleId}`);
+  await cacheService.clearByPattern(`driver:${driverId}`);
+  
+  // Send notification
+  await notificationService.sendAssignmentNotification({
+    vehicleId,
+    driverId,
+    type: 'ASSIGNMENT'
+  });
+  
+  return assignment;
+}
+```
+
+### 2. Document Verification Flow
+```javascript
+// Example: Verify document
+const documentService = require('./services/documentService');
+const notificationService = require('./services/notificationService');
+
+async function verifyDocument(documentId, status, remarks) {
+  // Verify document
+  const document = await documentService.verifyDocument({
+    documentId,
+    status,
+    remarks
+  });
+  
+  // Clear document cache
+  await cacheService.clearByPattern(`document:${documentId}`);
+  
+  // Send verification notification
+  await notificationService.sendVerificationNotification({
+    documentId,
+    status,
+    remarks
+  });
+  
+  return document;
+}
+```
+
+### 3. Vendor Registration Flow
+```javascript
+// Example: Register vendor
+const authService = require('./services/authService');
+const notificationService = require('./services/notificationService');
+
+async function registerVendor(vendorData) {
+  // Register vendor
+  const vendor = await authService.registerVendor(vendorData);
+  
+  // Clear vendor cache
+  await cacheService.clearByPattern('vendors:*');
+  
+  // Send welcome notification
+  await notificationService.sendWelcomeNotification({
+    vendorId: vendor.id,
+    email: vendor.email
+  });
+  
+  return vendor;
+}
+```
+
+## Best Practices
+
+1. **Error Handling**
+   - Always use try-catch blocks
+   - Use custom error classes
+   - Log errors appropriately
+   - Return meaningful error messages
+
+2. **Caching**
+   - Cache frequently accessed data
+   - Clear cache on updates
+   - Use appropriate cache expiration
+   - Handle cache misses gracefully
+
+3. **Notifications**
+   - Send notifications asynchronously
+   - Include relevant context
+   - Handle notification failures
+   - Log notification status
+
+4. **Scheduling**
+   - Use appropriate cron expressions
+   - Handle job failures
+   - Log job execution
+   - Implement job retry mechanism
+
+5. **Document Management**
+   - Validate document types
+   - Check file sizes
+   - Handle upload failures
+   - Implement cleanup for old documents
+
+## Testing
+
+# Testing Flow Sequence
+
+## 1. Authentication & Vendor Management
+
+### 1.1 Vendor Registration
+POST /api/vendors/register
+Headers:
+- Content-Type: application/json
+
+Request Body:
+    ```json
+{
+  "name": "City Fleet Services",
+  "email": "cityfleet@example.com",
+  "password": "SecurePass123!",
+  "vendorType": "CITY",
+  "contactNumber": "+1234567890",
+  "address": {
+    "street": "123 Main Street",
+    "city": "Metropolis",
+    "state": "CA",
+    "zipCode": "12345",
+    "country": "USA"
+    }
+}
+    ```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "vendor": {
+      "id": "vendor_123",
+      "name": "City Fleet Services",
+      "email": "cityfleet@example.com",
+      "vendorType": "CITY",
+      "contactNumber": "+1234567890",
+      "address": {
+        "street": "123 Main Street",
+        "city": "Metropolis",
+        "state": "CA",
+        "zipCode": "12345",
+        "country": "USA"
+      },
+      "createdAt": "2024-03-20T10:00:00Z"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+}
+    ```
+
+### 1.2 Vendor Login
+POST /api/vendors/login
+Headers:
+- Content-Type: application/json
+
+Request Body:
+    ```json
+{
+  "email": "cityfleet@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "vendor": {
+      "id": "vendor_123",
+      "name": "City Fleet Services",
+      "email": "cityfleet@example.com",
+      "vendorType": "CITY"
+    },
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    }
+}
+    ```
+
+### 1.3 Get Vendor Profile
+GET /api/vendors/profile
+Headers:
+- Authorization: Bearer <token>
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "id": "vendor_123",
+    "name": "City Fleet Services",
+    "email": "cityfleet@example.com",
+    "vendorType": "CITY",
+    "contactNumber": "+1234567890",
+    "address": {
+      "street": "123 Main Street",
+      "city": "Metropolis",
+      "state": "CA",
+      "zipCode": "12345",
+      "country": "USA"
+    },
+    "createdAt": "2024-03-20T10:00:00Z"
+    }
+}
+    ```
+
+## 2. Vehicle Management
+
+### 2.1 Add Vehicle
+POST /api/vehicles
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+
+Request Body:
+    ```json
+{
+  "vehicleNumber": "VH001",
+  "type": "BUS",
+  "model": "2024 City Bus",
+  "status": "ACTIVE",
+  "documents": [
+    {
+      "type": "REGISTRATION",
+      "number": "REG123456",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "type": "INSURANCE",
+      "number": "INS789012",
+      "expiryDate": "2025-06-30"
+    }
+  ]
+}
+```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "id": "vehicle_123",
+    "vehicleNumber": "VH001",
+    "type": "BUS",
+    "model": "2024 City Bus",
+    "status": "ACTIVE",
+    "documents": [
+      {
+        "id": "doc_123",
+        "type": "REGISTRATION",
+        "number": "REG123456",
+        "expiryDate": "2025-12-31",
+        "status": "PENDING"
+      },
+      {
+        "id": "doc_124",
+        "type": "INSURANCE",
+        "number": "INS789012",
+        "expiryDate": "2025-06-30",
+        "status": "PENDING"
+      }
+    ],
+    "createdAt": "2024-03-20T10:00:00Z"
+    }
+}
+    ```
+
+### 2.2 Get Vehicle List
+GET /api/vehicles
+Headers:
+- Authorization: Bearer <token>
+
+Response:
+    ```json
+{
+    "success": true,
+  "data": [
+    {
+      "id": "vehicle_123",
+      "vehicleNumber": "VH001",
+      "type": "BUS",
+      "model": "2024 City Bus",
+      "status": "ACTIVE",
+      "documents": [
+        {
+          "id": "doc_123",
+          "type": "REGISTRATION",
+          "number": "REG123456",
+          "expiryDate": "2025-12-31",
+          "status": "PENDING"
+        },
+        {
+          "id": "doc_124",
+          "type": "INSURANCE",
+          "number": "INS789012",
+          "expiryDate": "2025-06-30",
+          "status": "PENDING"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 3. Driver Management
+
+### 3.1 Add Driver
+POST /api/drivers
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+
+Request Body:
+    ```json
+{
+  "name": "John Doe",
+  "phone": "+1987654321",
+  "licenseNumber": "DL123456",
+  "licenseExpiry": "2025-12-31",
+  "documents": [
+    {
+      "type": "DRIVING_LICENSE",
+      "number": "DL123456",
+      "expiryDate": "2025-12-31"
+    },
+    {
+      "type": "MEDICAL_CERTIFICATE",
+      "number": "MED789012",
+      "expiryDate": "2024-12-31"
+    }
+  ]
+}
+```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "id": "driver_123",
+    "name": "John Doe",
+    "phone": "+1987654321",
+    "licenseNumber": "DL123456",
+    "licenseExpiry": "2025-12-31",
+    "documents": [
+      {
+        "id": "doc_125",
+        "type": "DRIVING_LICENSE",
+        "number": "DL123456",
+        "expiryDate": "2025-12-31",
+        "status": "PENDING"
+      },
+      {
+        "id": "doc_126",
+        "type": "MEDICAL_CERTIFICATE",
+        "number": "MED789012",
+        "expiryDate": "2024-12-31",
+        "status": "PENDING"
+      }
+    ],
+    "createdAt": "2024-03-20T10:00:00Z"
+    }
+}
+    ```
+
+### 3.2 Get Driver List
+GET /api/drivers
+Headers:
+- Authorization: Bearer <token>
+
+Response:
+    ```json
+{
+    "success": true,
+  "data": [
+    {
+      "id": "driver_123",
+      "name": "John Doe",
+      "phone": "+1987654321",
+      "licenseNumber": "DL123456",
+      "licenseExpiry": "2025-12-31",
+      "documents": [
+        {
+          "id": "doc_125",
+          "type": "DRIVING_LICENSE",
+          "number": "DL123456",
+          "expiryDate": "2025-12-31",
+          "status": "PENDING"
+        },
+        {
+          "id": "doc_126",
+          "type": "MEDICAL_CERTIFICATE",
+          "number": "MED789012",
+          "expiryDate": "2024-12-31",
+          "status": "PENDING"
+        }
+      ]
+    }
+  ]
+}
+```
+
+## 4. Vehicle-Driver Assignment
+
+### 4.1 Assign Driver to Vehicle
+POST /api/vehicles/vehicle_123/assign-driver
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+
+Request Body:
+    ```json
+{
+  "driverId": "driver_123"
+}
+```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "vehicle": {
+      "id": "vehicle_123",
+      "vehicleNumber": "VH001",
+      "assignedDriver": {
+        "id": "driver_123",
+        "name": "John Doe"
+      }
+    },
+    "driver": {
+      "id": "driver_123",
+      "name": "John Doe",
+      "assignedVehicle": {
+        "id": "vehicle_123",
+        "vehicleNumber": "VH001"
+      }
+    }
+    }
+}
+    ```
+
+## 5. Document Management
+
+### 5.1 Upload Document
+POST /api/documents
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: multipart/form-data
+
+Request Body:
+    ```json
+{
+  "entityType": "DRIVER",
+  "entityId": "driver_123",
+  "documentType": "DRIVING_LICENSE",
+  "file": [binary file]
+}
+    ```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "documentId": "doc_127",
+    "url": "https://storage.example.com/documents/doc_127.pdf",
+    "status": "PENDING"
+    }
+}
+    ```
+
+### 5.2 Verify Document
+PUT /api/documents/doc_127/verify
+Headers:
+- Authorization: Bearer <token>
+- Content-Type: application/json
+
+Request Body:
+    ```json
+{
+  "status": "VERIFIED",
+  "remarks": "Document verified successfully"
+}
+    ```
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "id": "doc_127",
+    "status": "VERIFIED",
+    "verifiedAt": "2024-03-20T10:00:00Z",
+    "remarks": "Document verified successfully"
+    }
+}
+    ```
+
+## 6. Dashboard & Reports
+
+### 6.1 Get Vendor Dashboard
+GET /api/vendors/dashboard
+Headers:
+- Authorization: Bearer <token>
+
+Response:
+    ```json
+{
+    "success": true,
+    "data": {
+    "stats": {
+      "totalVehicles": 10,
+      "activeVehicles": 8,
+      "totalDrivers": 15,
+      "activeDrivers": 12,
+      "expiringDocuments": 3
+    },
+    "recentActivities": [
+      {
+        "type": "DOCUMENT_VERIFIED",
+        "entityType": "DRIVER",
+        "entityId": "driver_123",
+        "timestamp": "2024-03-20T10:00:00Z"
+      },
+      {
+        "type": "VEHICLE_ASSIGNED",
+        "vehicleId": "vehicle_123",
+        "driverId": "driver_123",
+        "timestamp": "2024-03-20T09:30:00Z"
+      }
+        ]
+    }
+}
+    ```
+
+## Testing Flow in Postman
+
+1. Create a new collection named "Fleet Management System"
+2. Set up environment variables:
+   - base_url: http://localhost:3000
+   - token: (will be set after login)
+
+3. Testing Sequence:
+   a. Register vendor (POST /api/vendors/register)
+   b. Login (POST /api/vendors/login)
+   c. Save token to environment variable
+   d. Add vehicle (POST /api/vehicles)
+   e. Add driver (POST /api/drivers)
+   f. Assign driver to vehicle (POST /api/vehicles/:id/assign-driver)
+   g. Upload document (POST /api/documents)
+   h. Verify document (PUT /api/documents/:id/verify)
+   i. Check dashboard (GET /api/vendors/dashboard)
+
+4. Required Headers for all requests:
+   - Content-Type: application/json
+   - Authorization: Bearer {{token}}
+
+5. Error Response Format:
+    ```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error description",
+    "details": {}
+    }
+}
+    ```
+
+## Common Error Codes
+- INVALID_CREDENTIALS
+- UNAUTHORIZED
+- VALIDATION_ERROR
+- NOT_FOUND
+- DUPLICATE_ENTRY
+- INTERNAL_ERROR
+
+System Monitoring
+---------------
+The system includes comprehensive monitoring capabilities accessible via the following endpoints:
+
+### 1. Get System Metrics
+GET /api/v1/monitoring/metrics
+Headers:
+- Authorization: Bearer <token>
+Response:
+{
+    "success": true,
+    "data": {
+    "uptime": 3600,
+    "memory": {
+      "total": 1024,
+      "free": 512,
+      "used": {
+        "heapUsed": 256,
+        "heapTotal": 512,
+        "rss": 768
+      }
+    },
+    "cpu": {
+      "loadAvg": [1.5, 1.2, 1.0],
+      "cpus": [
+        {
+          "model": "Intel(R) Core(TM) i7",
+          "speed": 2800,
+          "times": {
+            "user": 1000,
+            "nice": 0,
+            "sys": 500,
+            "idle": 1500,
+            "irq": 0
+          }
+        }
+      ]
+    },
+    "requests": {
+      "total": 1000,
+      "success": 950,
+      "failed": 50
+    },
+    "errors": {
+      "total": 50,
+      "byType": {
+        "ValidationError": 20,
+        "AuthenticationError": 10,
+        "DatabaseError": 15,
+        "UnknownError": 5
+      }
+    },
+    "performance": {
+      "averageResponseTime": 150,
+      "memoryUsage": [
+        {
+          "timestamp": "2024-03-20T10:00:00Z",
+          "heapUsed": 256,
+          "heapTotal": 512,
+          "rss": 768
+        }
+      ],
+      "cpuUsage": [
+        {
+          "timestamp": "2024-03-20T10:00:00Z",
+          "user": 1000,
+          "system": 500
+        }
+      ]
+    },
+    "database": {
+      "status": "connected",
+      "collections": 10
+    },
+    "redis": {
+      "status": "connected",
+      "memory": {
+        "used_memory": 1024,
+        "used_memory_peak": 2048
+      }
+    }
+  }
+}
+
+### 2. Get Request Statistics
+GET /api/v1/monitoring/stats
+Headers:
+- Authorization: Bearer <token>
+Response:
+{
+    "success": true,
+    "data": {
+    "requests": {
+      "total": 1000,
+      "success": 950,
+      "failed": 50
+    },
+    "errors": {
+      "total": 50,
+      "byType": {
+        "ValidationError": 20,
+        "AuthenticationError": 10,
+        "DatabaseError": 15,
+        "UnknownError": 5
+      }
+    },
+    "performance": {
+      "averageResponseTime": 150
+    }
+  }
+}
+
+### 3. Get Resource Usage
+GET /api/v1/monitoring/resources
+Headers:
+- Authorization: Bearer <token>
+Response:
+{
+  "success": true,
+  "data": {
+    "memory": {
+      "total": 1024,
+      "free": 512,
+      "used": {
+        "heapUsed": 256,
+        "heapTotal": 512,
+        "rss": 768
+      }
+    },
+    "cpu": {
+      "loadAvg": [1.5, 1.2, 1.0],
+      "cpus": [
+        {
+          "model": "Intel(R) Core(TM) i7",
+          "speed": 2800,
+          "times": {
+            "user": 1000,
+            "nice": 0,
+            "sys": 500,
+            "idle": 1500,
+            "irq": 0
+          }
+        }
+      ]
+    },
+    "database": {
+      "status": "connected",
+      "collections": 10
+    },
+    "redis": {
+      "status": "connected",
+      "memory": {
+        "used_memory": 1024,
+        "used_memory_peak": 2048
+      }
+    }
+  }
+}
+
+Note: All monitoring endpoints require admin privileges and are protected by authentication.
+    
